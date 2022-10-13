@@ -1,25 +1,29 @@
 PVTW
-#Pref    Bref  Comp        Visc Viscosibility
-1 1.01 4.4962e-5 0.3 0.0 /
+-- Pref   Bref    Comp         Visc    Viscosibility
+    1    1.01    4.4962e-5     0.3     0.0            /
 /
 
 PVDO
- --   PRESSURE    B-OIL     VISCOSITY
- --    (BAR)                  (CP)
-20.6843 	1.05	2.85
-55.1581		1.02	2.99
-551.581   	1.01	3
+-- PRESSURE   B-OIL     VISCOSITY
+-- (BAR)                  (CP)
+20.6843 	  1.05	      2.85
+55.1581		  1.02	      2.99
+551.581   	  1.01	      3
 /
 
 ROCK
-      1   1.45037680E-5 /
+--  P_ref  Rock_compressibility
+--  bar
+      1     1.45037680E-5 /
 
 
 DENSITY
+--      OIL         WATER
       848.979    1025.18 /
 
 SWOF
-	  0.0            0            1             0.000
+--         Sw        Kr_oil    Kr_water         Pc
+	      0.0            0            1         0.000
           0.2            0            1         0.000
          0.26         0.01         0.81         0.000
          0.32         0.04         0.64         0.000
