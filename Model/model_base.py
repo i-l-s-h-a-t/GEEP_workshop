@@ -13,15 +13,23 @@ class BaseModel(DartsModel):
         # measure time spend on reading/initialization
         self.timer.node["initialization"].start()
 
-        case_3 = True#False
+        #case = 'case_3'
+        case = 'case_3_sector'
 
-        if case_3:
+        if case == 'case_3':
             self.nx = 82
             self.ny = 75
             self.nz = 22
             self.prop_filename = self.grid_filename = 'case_3.grdecl'
             self.width_filename = 'width_case_3.grdecl'
             self.well_perf_filename = 'WELLS_case_3.INC'
+        elif case == 'case_3_sector':
+            self.nx = 67
+            self.ny = 51
+            self.nz = 10
+            self.prop_filename = self.grid_filename = 'case_3_sector.grdecl'
+            self.width_filename = 'width_case_3_sector.grdecl'
+            self.well_perf_filename = 'WELLS_case_3_sector.INC'
         else: # original case
             self.nx = 81
             self.ny = 58
@@ -128,15 +136,19 @@ class BaseModel(DartsModel):
                                 break
 
     def wells4ParaView(self, filename):
+        x_array = self.reservoir.discretizer.cell_data['center'][:, :, :, 0]
+        y_array = self.reservoir.discretizer.cell_data['center'][:, :, :, 1]
+        z_array = self.reservoir.discretizer.cell_data['center'][:, :, :, 2]
         name = []
         type = []
-        ix = []
-        iy = []
+        x = []
+        y = []
+        z = []
         keep_reading = True
-        with open('WELLS.INC') as f:
+        with open(self.well_perf_filename) as f:
             while keep_reading:
                 buff = f.readline()
-                if 'WELSPECS' in buff:
+                if 'COMPDAT' in buff:
                     while True:  # be careful here
                         buff = f.readline()
                         if len(buff) != 0:
@@ -144,13 +156,16 @@ class BaseModel(DartsModel):
 
                             if len(welspecs) != 0 and welspecs[0] != '/' and welspecs[0][:2] != '--':  # skip the empty line and '/' line
                                 name += [welspecs[0]]
-                                if 'GROUP1' in welspecs[1]:
-                                    type += ['PRD']
-                                else:
+                                if 'INJ' in welspecs[0]:
                                     type += ['INJ']
-                                ix += [welspecs[2]]
-                                iy += [welspecs[3]]
-                                # define perforation
+                                else:
+                                    type += ['PRD']
+                                ix = int(welspecs[1]) - 1
+                                iy = int(welspecs[2]) - 1
+                                iz = 0
+                                x += [x_array[ix, iy, iz]]
+                                y += [y_array[ix, iy, iz]]
+                                z += [z_array[ix, iy, iz]]
 
                             if len(welspecs) != 0 and welspecs[0] == '/':
                                 keep_reading = False
@@ -166,14 +181,15 @@ class BaseModel(DartsModel):
         def num2file(fp, name_in, list_in):
             fp.write("%s = [" % name_in)
             for item in list_in:
-                fp.write("%d, " % int(item))
+                fp.write("%f, " % int(item))
             fp.write("]\n")
 
         f = open(filename, 'w')
         str2file(f, 'well_list', name)
         str2file(f, 'well_type', type)
-        num2file(f, 'well_x', ix)
-        num2file(f, 'well_y', iy)
+        num2file(f, 'well_x', x)
+        num2file(f, 'well_y', y)
+        num2file(f, 'well_z', z)
         f.close()
 
     def save_to_grdecl(self, filename, cube, cubename):
