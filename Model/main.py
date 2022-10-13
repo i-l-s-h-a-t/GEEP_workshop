@@ -1,5 +1,6 @@
 from darts.engines import value_vector, redirect_darts_output, sim_params
 from model_deadoil import Model
+#from model_geothermal import Model
 import pandas as pd
 from well_plots import plot_wells
 
@@ -16,7 +17,6 @@ m.export_pro_vtk()
 #exit()
 
 m.set_wells()
-
 
 #  simulation
 n_steps = 10

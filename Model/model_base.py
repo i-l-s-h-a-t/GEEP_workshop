@@ -22,33 +22,37 @@ class BaseModel(DartsModel):
             self.nz = 22
             self.prop_filename = self.grid_filename = 'case_3.grdecl'
             self.width_filename = 'width_case_3.grdecl'
-            self.well_perf_filename = 'WELLS_case_3.INC'
+            self.well_perf_filename = 'wells_case_3.inc'
         elif case == 'case_3_sector':
             self.nx = 67
             self.ny = 51
             self.nz = 10
             self.prop_filename = self.grid_filename = 'case_3_sector.grdecl'
             self.width_filename = 'width_case_3_sector.grdecl'
-            self.well_perf_filename = 'WELLS_case_3_sector.INC'
-        else: # original case
+            self.well_perf_filename = 'wells_case_3_sector.inc'
+        else:  # original case
             self.nx = 81
             self.ny = 58
             self.nz = 20
             self.grid_filename = 'grid.grdecl'
             self.prop_filename = 'reservoir.in'
             self.width_filename = 'width.in'
-            self.well_perf_filename = 'WELLS.INC'  # file with COMPDAT keyword (columns: well_name and I, J, K1-K2)
+            self.well_perf_filename = 'WELLS.INC'  # file with COMPDAT keyword (used columns: well_name, I, J, K1, K2)
 
         # create reservoir from UNISIM - 20 layers (81*58*20, Corner-point grid)
         self.permx = load_single_keyword(self.prop_filename, 'PERMX')
         self.permy = load_single_keyword(self.prop_filename, 'PERMY')
         self.permz = load_single_keyword(self.prop_filename, 'PERMZ')
         self.poro  = load_single_keyword(self.prop_filename, 'PORO')
-        
-        is_CPG = True  # re-calculate dx, dy and dz from CPG grid and write them to width.in
-        #is_CPG = False # read dx, dy and dz from width.in for faster mesh initialization
 
-        if is_CPG is False:
+        #self.permx *= 100
+        #self.permy *= 100
+        #self.permz *= 100
+
+        self.is_CPG = True  # re-calculate dx, dy and dz from CPG grid and write them to width.in
+        #self.is_CPG = False # read dx, dy and dz from width.in for faster mesh initialization
+
+        if self.is_CPG is False:
             print('Reading dx, dy and dz specifications...')
             self.dx = load_single_keyword(self.width_filename, 'DX')
             self.dy = load_single_keyword(self.width_filename, 'DY')
@@ -66,7 +70,7 @@ class BaseModel(DartsModel):
         self.reservoir = StructReservoir(self.timer, nx=self.nx, ny=self.ny, nz=self.nz, dx=self.dx, dy=self.dy, dz=self.dz,
                                          permx=self.permx, permy=self.permy, permz=self.permz, poro=self.poro,
                                          depth=self.depth, actnum=self.actnum, coord=self.coord, zcorn=self.zcorn,
-                                         is_cpg=is_CPG)
+                                         is_cpg=self.is_CPG)
 
         poro = np.array(self.reservoir.mesh.poro, copy=False)
         poro[poro == 0.0] = 1.E-4
@@ -74,7 +78,7 @@ class BaseModel(DartsModel):
         self.reservoir.set_boundary_volume(yz_minus=1e15, yz_plus=1e15, xz_minus=1e15,
                                            xz_plus=1e15, xy_minus=-1, xy_plus=-1)
 
-        if is_CPG:
+        if self.is_CPG:
             dx, dy, dz = self.reservoir.get_cell_cpg_widths()
             self.depth = self.reservoir.discretizer.cell_data['center'][:, :, :, 2].flatten(order='F')
             save_few_keywords(self.width_filename, ['DX', 'DY', 'DZ', 'DEPTH'], [dx, dy, dz, self.depth])
@@ -136,6 +140,8 @@ class BaseModel(DartsModel):
                                 break
 
     def wells4ParaView(self, filename):
+        if not self.is_CPG:
+            return
         x_array = self.reservoir.discretizer.cell_data['center'][:, :, :, 0]
         y_array = self.reservoir.discretizer.cell_data['center'][:, :, :, 1]
         z_array = self.reservoir.discretizer.cell_data['center'][:, :, :, 2]
