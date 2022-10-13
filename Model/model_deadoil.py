@@ -16,7 +16,7 @@ class Model(BaseModel):
         self.pvt = 'physics_do.in'
         self.zero = 1e-13
         self.property_container = model_properties(phases_name=['water', 'oil'], components_name=['w', 'o'],
-                                                   pvt=self.pvt, min_z=self.zero/10)
+                                                   pvt=self.pvt, min_z=self.zero / 10)
 
         # Define property evaluators based on custom properties
         self.flash_ev = []
@@ -33,10 +33,10 @@ class Model(BaseModel):
         # create physics
         self.thermal = 0
         self.physics = SuperPhysics(self.property_container, self.timer, n_points=400, min_p=0, max_p=1000,
-                                     min_z=self.zero, max_z=1 - self.zero, thermal=self.thermal)
+                                    min_z=self.zero, max_z=1 - self.zero, thermal=self.thermal)
         self.params.first_ts = 1e-3
         self.params.mult_ts = 2
-        self.params.max_ts = 10
+        self.params.max_ts = 100
         self.params.tolerance_newton = 1e-3
         self.params.tolerance_linear = 1e-4
 
@@ -47,7 +47,49 @@ class Model(BaseModel):
 
         self.timer.node["initialization"].stop()
 
+    def print_array_stat(self, name, arr):
+        print(name, 'MIN=', arr.min(), 'MEAN=', arr.mean(), 'MAX=', arr.max())
+
+
+    def set_initial_conditions(self):
+        """ Uniform Initial conditions for dead oil
+            Set pressure by depth gradient (start from 1 bar at zero depth)
+            Fill composition from initial water saturation self.sw
+        """
+        mesh = self.reservoir.mesh
+        nb = mesh.n_blocks
+
+        depth = self.depth[self.actnum>0]
+        #depth = np.array(mesh.depth, copy=True)
+        self.print_array_stat('depth', depth)
+
+        # set initial pressure
+        pressure_grad = 100  # bars per meter
+        pressure = np.array(mesh.pressure, copy=False)
+        pressure[:nb - 2 * len(self.reservoir.wells)] = depth / 1000. * pressure_grad + 1.
+        self.print_array_stat('initial_pressure', pressure)
+
+        # set initial composition
+        nc = self.property_container.nc
+
+        mesh.composition.resize(nb * (nc - 1))
+        composition = np.array(mesh.composition, copy=False)
+        # calculate composition from initial saturation
+        # use surface densities. However, it is better to use densities at reservoir pressure
+        sw = self.generate_sw(swl=0.2, woc_depth=3150, file_name='swat.inc')
+        #sw = load_single_keyword(self.prop_filename, 'SWAT')
+        self.print_array_stat('initial_Sw', sw)
+        sw = sw[self.actnum > 0]
+        so = 1 - sw
+        dens_w = self.property_container.surf_wat_dens
+        dens_o = self.property_container.surf_oil_dens
+        composition[:nb - 2 * len(self.reservoir.wells)] = (sw * dens_w) / (sw * dens_w + so * dens_o) - self.zero
+        self.print_array_stat('initial_composition', composition)
+
     def set_boundary_conditions(self):
+        '''
+        set well control by rate = 0
+        '''
         for i, w in enumerate(self.reservoir.wells):
             if "INJ" in w.name:
                 w.control = self.physics.new_rate_inj(0, self.inj_comp, 0)
@@ -55,6 +97,9 @@ class Model(BaseModel):
                 w.control = self.physics.new_rate_prod(0, 1)
 
     def set_wells(self):
+        '''
+        set well control by BHP
+        '''
         for i, w in enumerate(self.reservoir.wells):
             if "INJ" in w.name:
                 w.control = self.physics.new_rate_inj(2000, self.inj_comp, 0)
@@ -78,6 +123,22 @@ class Model(BaseModel):
             so[i] = 1 - sw[i]
 
         self.export_vtk(file_name, local_cell_data={'OilSat': so, 'WatSat': sw})
+
+    def generate_sw(self, swl, woc_depth, file_name='swat.inc'):
+        '''
+        fill water saturation cube with value=swl for cells with depth <= woc_depth,
+                                   with value=1 otherwise
+        :param swl: connate water saturation
+        :param woc_depth: water oil contact depth
+        :param file_name: file to write SWAT cube (GRDECL)
+        :return: swat 1d-array
+        '''
+        nb = self.reservoir.nx * self.reservoir.ny * self.reservoir.nz
+        sw = np.zeros(nb) + swl
+        sw[self.depth > woc_depth] = 1.0
+        save_few_keywords(file_name, ['SWAT'], [sw])
+        return sw
+
 
 class model_properties(property_container):
     def __init__(self, phases_name, components_name, pvt, min_z=1e-11):
