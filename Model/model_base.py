@@ -13,31 +13,49 @@ class BaseModel(DartsModel):
         # measure time spend on reading/initialization
         self.timer.node["initialization"].start()
 
+        case_3 = False
+
+        if case_3:
+            self.nx = 82
+            self.ny = 75
+            self.nz = 22
+            self.prop_filename = self.grid_filename = 'case_3.grdecl'
+            self.width_filename = 'width_case_3.grdecl'
+            self.well_perf_filename = 'WELLS_case_3.INC'
+        else: # original case
+            self.nx = 81
+            self.ny = 58
+            self.nz = 20
+            self.grid_filename = 'grid.grdecl'
+            self.prop_filename = 'reservoir.in'
+            self.width_filename = 'width.in'
+            self.well_perf_filename = 'WELLS.INC'  # file with COMPDAT keyword (columns: well_name and I, J, K1-K2)
+
         # create reservoir from UNISIM - 20 layers (81*58*20, Corner-point grid)
-        self.permx = load_single_keyword('reservoir.in', 'PERMX')
-        self.permy = load_single_keyword('reservoir.in', 'PERMY')
-        self.permz = load_single_keyword('reservoir.in', 'PERMZ')
-        self.poro = load_single_keyword('reservoir.in', 'PORO')
-        self.depth = load_single_keyword('reservoir.in', 'DEPTH')
+        self.permx = load_single_keyword(self.prop_filename, 'PERMX')
+        self.permy = load_single_keyword(self.prop_filename, 'PERMY')
+        self.permz = load_single_keyword(self.prop_filename, 'PERMZ')
+        self.poro  = load_single_keyword(self.prop_filename, 'PORO')
+        
+        is_CPG = True  # re-calculate dx, dy and dz from CPG grid and write them to width.in
+        #is_CPG = False # read dx, dy and dz from width.in for faster mesh initialization
 
-        if os.path.exists(('width.in')):
+        if is_CPG is False:
             print('Reading dx, dy and dz specifications...')
-            self.dx = load_single_keyword('width.in', 'DX')
-            self.dy = load_single_keyword('width.in', 'DY')
-            self.dz = load_single_keyword('width.in', 'DZ')
-        else:
-            self.dx = self.dy = self.dz = 0
+            self.dx = load_single_keyword(self.width_filename, 'DX')
+            self.dy = load_single_keyword(self.width_filename, 'DY')
+            self.dz = load_single_keyword(self.width_filename, 'DZ')
+            self.depth = load_single_keyword(self.width_filename, 'DEPTH')
+        else: # read CPG (COORD and ZCORN arrays)
+            self.dx = self.dy = self.dz = self.depth = 0
 
+        self.coord = load_single_keyword(self.grid_filename, 'COORD')
+        self.zcorn = load_single_keyword(self.grid_filename, 'ZCORN')
 
         # Import other properties from files
-        filename = 'grid.grdecl'
-        self.actnum = load_single_keyword(filename, 'ACTNUM')
-        self.coord = load_single_keyword(filename, 'COORD')
-        self.zcorn = load_single_keyword(filename, 'ZCORN')
+        self.actnum = load_single_keyword(self.grid_filename, 'ACTNUM')
 
-        is_CPG = False  # True for re-calculation of dx, dy and dz from CPG grid
-
-        self.reservoir = StructReservoir(self.timer, nx=81, ny=58, nz=20, dx=self.dx, dy=self.dy, dz=self.dz,
+        self.reservoir = StructReservoir(self.timer, nx=self.nx, ny=self.ny, nz=self.nz, dx=self.dx, dy=self.dy, dz=self.dz,
                                          permx=self.permx, permy=self.permy, permz=self.permz, poro=self.poro,
                                          depth=self.depth, actnum=self.actnum, coord=self.coord, zcorn=self.zcorn,
                                          is_cpg=is_CPG)
@@ -50,9 +68,10 @@ class BaseModel(DartsModel):
 
         if is_CPG:
             dx, dy, dz = self.reservoir.get_cell_cpg_widths()
-            save_few_keywords('width.in', ['DX', 'DY', 'DZ'], [dx, dy, dz])
+            self.depth = self.reservoir.discretizer.cell_data['center'][:, :, :, 2].flatten(order='F')
+            save_few_keywords(self.width_filename, ['DX', 'DY', 'DZ', 'DEPTH'], [dx, dy, dz, self.depth])
 
-        self.read_and_add_perforations('WELLS.INC')
+        self.read_and_add_perforations(self.well_perf_filename)
 
         self.timer.node["initialization"].stop()
 
@@ -73,6 +92,9 @@ class BaseModel(DartsModel):
 
 
     def read_and_add_perforations(self, filename):
+        if filename is None:
+            return
+
         well_dia = 0.152
         well_rad = well_dia / 2
 
@@ -94,13 +116,12 @@ class BaseModel(DartsModel):
                                 else:
                                     self.reservoir.add_well(CompDat[0], wellbore_diameter=well_dia)
                                     prev_well_name = CompDat[0]
-
                                 # define perforation
                                 for i in range(int(CompDat[3]), int(CompDat[4]) + 1):
                                     self.reservoir.add_perforation(self.reservoir.wells[-1],
                                                                    int(CompDat[1]), int(CompDat[2]), i,
                                                                    well_radius=well_rad,
-                                                                   multi_segment=False)
+                                                                   multi_segment=False, verbose=False)
 
                             if len(CompDat) != 0 and '/' == CompDat[0]:
                                 keep_reading = False
@@ -154,3 +175,12 @@ class BaseModel(DartsModel):
         num2file(f, 'well_x', ix)
         num2file(f, 'well_y', iy)
         f.close()
+
+    def save_to_grdecl(self, filename, cube, cubename):
+        '''
+        writes 1d-array of size nx*ny*nz from 1d-array of size n_active_cells, fills with zeros where actnum is zero
+        might be useful to load into other software
+        '''
+        cube_full = np.zeros(self.nx * self.ny * self.nz)
+        cube_full[self.reservoir.discretizer.local_to_global[:]] = cube[:]
+        save_few_keywords(filename, [cubename], [cube_full])
