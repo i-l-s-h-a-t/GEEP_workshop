@@ -59,8 +59,7 @@ class Model(BaseModel):
         mesh = self.reservoir.mesh
         nb = mesh.n_blocks
 
-        depth = self.depth[self.actnum>0]
-        #depth = np.array(mesh.depth, copy=True)
+        depth = self.depth[self.actnum > 0]
         self.print_array_stat('depth', depth)
 
         # set initial pressure
@@ -71,14 +70,14 @@ class Model(BaseModel):
 
         # set initial composition
         nc = self.property_container.nc
-
         mesh.composition.resize(nb * (nc - 1))
         composition = np.array(mesh.composition, copy=False)
-        # calculate composition from initial saturation
-        # use surface densities. However, it is better to use densities at reservoir pressure
+        # fill Sw or load it from file
         sw = self.generate_sw(swl=0.2, woc_depth=3150, file_name='swat.inc')
         #sw = load_single_keyword(self.prop_filename, 'SWAT')
         self.print_array_stat('initial_Sw', sw)
+        # calculate composition from initial saturation
+        # use surface densities. However, it is better to use densities at reservoir pressure
         sw = sw[self.actnum > 0]
         so = 1 - sw
         dens_w = self.property_container.surf_wat_dens
@@ -98,14 +97,16 @@ class Model(BaseModel):
 
     def set_wells(self):
         '''
-        set well control by BHP
+        set well controls
+        new_rate_inj arguments: (pressure, bar; injection composition; injection temperature, K)
+        new_bhp_prod arguments: (pressure, bar)
         '''
         for i, w in enumerate(self.reservoir.wells):
             if "INJ" in w.name:
-                w.control = self.physics.new_rate_inj(2000, self.inj_comp, 0)
+                w.control = self.physics.new_rate_inj(100, self.inj_comp, 0)
                 w.constraint = self.physics.new_bhp_inj(550, self.inj_comp)
             else:
-                w.control = self.physics.new_bhp_prod(350)
+                w.control = self.physics.new_bhp_prod(50)
 
     def export_pro_vtk(self, file_name='deadoil_out'):
         Xn = np.array(self.physics.engine.X, copy=False)
