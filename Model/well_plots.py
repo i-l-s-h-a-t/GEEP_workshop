@@ -1,5 +1,4 @@
 import os
-
 import pandas as pd
 from darts.tools.plot_darts import *
 
@@ -13,36 +12,36 @@ plots_dir = 'plots/'
 # plot PROD and INJ rates, summarized by wells
 def plot_total_rates(time_data):
     try:
-        ax1 = plot_total_prod_oil_rate_darts(time_data, style='-', color='b')
-        ax1.set(xlabel="Days", ylabel="Produced gas rate, sm$^3$/day")
+        ax = plot_total_prod_oil_rate_darts(time_data, style='-', color='b')
+        ax.set(xlabel="Days", ylabel="Produced gas rate, sm$^3$/day")
         plt.savefig(plots_dir + 'FOPR.png')
     except:
         pass
 
     try:
-        ax3 = plot_total_prod_water_rate_darts(time_data, style='-', color='b')
-        ax3.set(xlabel="Days", ylabel="Produced water rate, sm$^3$/day")
+        ax = plot_total_prod_water_rate_darts(time_data, style='-', color='b')
+        ax.set(xlabel="Days", ylabel="Produced water rate, sm$^3$/day")
         plt.savefig(plots_dir + 'FWPR.png')
     except:
         pass
 
     try:
-        ax2 = plot_total_prod_gas_rate_darts(time_data, style='-', color='b')
-        ax2.set(xlabel="Days", ylabel="Produced gas rate, sm$^3$/day")
+        ax = plot_total_prod_gas_rate_darts(time_data, style='-', color='b')
+        ax.set(xlabel="Days", ylabel="Produced gas rate, sm$^3$/day")
         plt.savefig(plots_dir + 'FGPR.png')
     except:
         pass
 
     try:
-        ax2 = plot_total_inj_gas_rate_darts(time_data, style='-', color='b')
-        ax2.set(xlabel="Days", ylabel="Injected gas rate, sm$^3$/day")
+        ax = plot_total_inj_gas_rate_darts(time_data, style='-', color='b')
+        ax.set(xlabel="Days", ylabel="Injected gas rate, sm$^3$/day")
         plt.savefig(plots_dir + 'FGIR.png')
     except:
         pass
 
     try:
-        ax4 = plot_total_inj_water_rate_darts(time_data, style='-', color='b')
-        ax4.set(xlabel="Days", ylabel="Injected water rate, sm$^3$/day")
+        ax = plot_total_inj_water_rate_darts(time_data, style='-', color='b')
+        ax.set(xlabel="Days", ylabel="Injected water rate, sm$^3$/day")
         plt.savefig(plots_dir + 'FWIR.png')
     except:
         pass
@@ -81,18 +80,26 @@ def plot_acc_rates(time_data):
 def plot_rates(time_data, well_fname):
     well_list = get_well_list(well_fname)
     for well_name in well_list:
-        ax = plot_oil_rate_darts(well_name, time_data, style='-', color='b')
-        ax.set(xlabel="Days", ylabel="Oil rate, sm3")
-        plt.savefig(plots_dir + 'WOPR_' + well_name + '.png')
+        try:
+            ax = plot_oil_rate_darts(well_name, time_data, style='-', color='b')
+            ax.set(xlabel="Days", ylabel="Oil rate, sm3")
+            plt.savefig(plots_dir + 'WOPR_' + well_name + '.png')
+        except:
+            pass
 
-        ax = plot_water_rate_darts(well_name, time_data, style='-', color='b')
-        ax.set(xlabel="Days", ylabel="Water rate, sm3")
-        plt.savefig(plots_dir + 'WWPR_' + well_name + '.png')
+        try:
+            ax = plot_water_rate_darts(well_name, time_data, style='-', color='b')
+            ax.set(xlabel="Days", ylabel="Water rate, sm3")
+            plt.savefig(plots_dir + 'WWPR_' + well_name + '.png')
+        except:
+            pass
 
-        ax = plot_gas_rate_darts(well_name, time_data, style='-', color='b')
-        ax.set(xlabel="Days", ylabel="Gas rate, sm3")
-        plt.savefig(plots_dir + 'WGPR_' + well_name + '.png')
-
+        try:
+            ax = plot_gas_rate_darts(well_name, time_data, style='-', color='b')
+            ax.set(xlabel="Days", ylabel="Gas rate, sm3")
+            plt.savefig(plots_dir + 'WGPR_' + well_name + '.png')
+        except:
+            pass
 
 # plot temperature for each well
 def plot_temperature(time_data, well_fname):
@@ -111,11 +118,9 @@ def plot_bhp(time_data, well_fname):
     for well_name in well_list:
         ax = plot_bhp_darts(well_name, time_data, style='-', color='b')
         ax.set(xlabel="Days", ylabel="BHP, bar")
-
         # format the labels
-        current_values = ax.get_yticks()
-        ax.set_yticklabels(['{:.3f}'.format(x) for x in current_values])
-
+        #current_values = ax.get_yticks()
+        #ax.set_yticklabels(['{:.1f}'.format(x) for x in current_values])
         plt.savefig(plots_dir + 'BHP_' + well_name + '.png')
 
 
@@ -148,12 +153,12 @@ def get_well_list(filename):
     return well_list
 
 
-def plot_all(well_fname, pkl_file='darts_time_data.pkl'):
+def plot_wells(well_fname, pkl_file='darts_time_data.pkl'):
     if not os.path.exists(plots_dir):
         os.mkdir(plots_dir)
 
     time_data_orig = pd.read_pickle(pkl_file)
-    # time_data_report_orig = pd.read_pickle("darts_time_data_report.pkl")
+    time_data_report_orig = pd.read_pickle("darts_time_data_report.pkl")
 
     # cut few first timesteps to make the plots better
     time_data = pd.DataFrame()
@@ -162,16 +167,15 @@ def plot_all(well_fname, pkl_file='darts_time_data.pkl'):
 
     plot_total_rates(time_data)
 
-    plot_acc_rates(time_data)
-
-    plot_bhp(time_data, well_fname)
+    plot_acc_rates(time_data_report_orig)
 
     plot_temperature(time_data, well_fname)
 
     plot_bhp(time_data, well_fname)
 
-
+    plot_rates(time_data, well_fname)
 
 ##########################################################
 
-plot_all(well_fname='WELLS_case_3.INC')
+if __name__ == '__main__':
+    plot_wells(well_fname='wells_case_3_sector.inc')
