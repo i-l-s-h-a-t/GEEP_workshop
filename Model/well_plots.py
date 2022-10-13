@@ -5,6 +5,11 @@ from darts.tools.plot_darts import *
 
 plots_dir = 'plots/'
 
+# WOPR = Well Oil Production Rate
+# WOPT = Well Oil Production Total
+# FWPR = Field Water Production Rate
+# FGPT = Filed Gas Production Total
+
 # plot PROD and INJ rates, summarized by wells
 def plot_total_rates(time_data):
     try:

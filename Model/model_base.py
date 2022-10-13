@@ -13,7 +13,7 @@ class BaseModel(DartsModel):
         # measure time spend on reading/initialization
         self.timer.node["initialization"].start()
 
-        case_3 = False
+        case_3 = True#False
 
         if case_3:
             self.nx = 82
@@ -64,7 +64,7 @@ class BaseModel(DartsModel):
         poro[poro == 0.0] = 1.E-4
 
         self.reservoir.set_boundary_volume(yz_minus=1e15, yz_plus=1e15, xz_minus=1e15,
-                                           xz_plus=1e15, xy_minus=1e15, xy_plus=1e15)
+                                           xz_plus=1e15, xy_minus=-1, xy_plus=-1)
 
         if is_CPG:
             dx, dy, dz = self.reservoir.get_cell_cpg_widths()
