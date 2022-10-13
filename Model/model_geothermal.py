@@ -47,7 +47,7 @@ class Model(BaseModel):
 
         self.params.first_ts = 1e-5
         self.params.mult_ts = 2
-        self.params.max_ts = 20
+        self.params.max_ts = 100
 
         # Newton tolerance is relatively high because of L2-norm for residual and well segments
         self.params.tolerance_newton = 1e-3
