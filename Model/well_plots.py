@@ -119,8 +119,8 @@ def plot_bhp(time_data, well_fname):
         ax = plot_bhp_darts(well_name, time_data, style='-', color='b')
         ax.set(xlabel="Days", ylabel="BHP, bar")
         # format the labels
-        #current_values = ax.get_yticks()
-        #ax.set_yticklabels(['{:.1f}'.format(x) for x in current_values])
+        current_values = ax.get_yticks()
+        ax.set_yticklabels(['{:.1f}'.format(x) for x in current_values])
         plt.savefig(plots_dir + 'BHP_' + well_name + '.png')
 
 
@@ -160,14 +160,22 @@ def plot_wells(well_fname, pkl_file='darts_time_data.pkl'):
     time_data_orig = pd.read_pickle(pkl_file)
     time_data_report_orig = pd.read_pickle("darts_time_data_report.pkl")
 
-    # cut few first timesteps to make the plots better
-    time_data = pd.DataFrame()
-    for col in time_data_orig.columns:
-        time_data[col] = time_data_orig[col][10:]
+    cut_first_steps = 10
+    if cut_first_steps > 0:
+        # cut few first timesteps to make the plots better
+        time_data = pd.DataFrame()
+        for col in time_data_orig.columns:
+            time_data[col] = time_data_orig[col][10:]
+        time_data_report = pd.DataFrame()
+        for col in time_data_report_orig.columns:
+            time_data_report[col] = time_data_report_orig[col][cut_first_steps:]
+    else:
+        time_data = time_data_orig
+        time_data_report = time_data_report_orig
 
     plot_total_rates(time_data)
 
-    plot_acc_rates(time_data_report_orig)
+    plot_acc_rates(time_data_report)
 
     plot_temperature(time_data, well_fname)
 
