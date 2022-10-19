@@ -20,16 +20,16 @@ class BaseModel(DartsModel):
             self.nx = 82
             self.ny = 75
             self.nz = 22
-            self.prop_filename = self.grid_filename = 'case_3.grdecl'
-            self.width_filename = 'width_case_3.grdecl'
-            self.well_perf_filename = 'wells_case_3.inc'
+            self.prop_filename = self.grid_filename = 'case_3/case_3.grdecl'
+            self.width_filename = 'case_3/width_case_3.grdecl'
+            self.well_perf_filename = 'case_3/wells_case_3.inc'
         elif case == 'case_3_sector':
             self.nx = 67
             self.ny = 51
             self.nz = 10
-            self.prop_filename = self.grid_filename = 'case_3_sector.grdecl'
-            self.width_filename = 'width_case_3_sector.grdecl'
-            self.well_perf_filename = 'wells_case_3_sector.inc'
+            self.prop_filename = self.grid_filename = 'case_3_sector/case_3_sector.grdecl'
+            self.width_filename = 'case_3_sector/width_case_3_sector.grdecl'
+            self.well_perf_filename = 'case_3_sector/wells_case_3_sector.inc'
         else:  # original case
             self.nx = 81
             self.ny = 58
